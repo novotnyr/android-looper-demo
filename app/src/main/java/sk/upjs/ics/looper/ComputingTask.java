@@ -1,50 +1,59 @@
 package sk.upjs.ics.looper;
 
-import android.app.Activity;
 import android.os.Handler;
 import android.util.Log;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-
-import java.lang.ref.WeakReference;
-import java.util.List;
 
 public class ComputingTask implements Runnable {
     public static final String TAG = ComputingTask.class.getName();
 
+    private int id;
+
     private Handler handler;
 
-    private WeakReference<Activity> weakActivity;
+    private OnResultListener onResultListener;
 
-    public ComputingTask(Handler handler, Activity activity) {
+    private int progress;
+
+    public ComputingTask(int id, Handler handler, OnResultListener onResultListener) {
+        this.id = id;
         this.handler = handler;
-        this.weakActivity = new WeakReference<Activity>(activity);
+        this.onResultListener = onResultListener;
     }
 
     @Override
     public void run() {
-        while(true) {
+        while (!Thread.interrupted()) {
             try {
-                Thread.sleep(5000);
-                Log.i(TAG, "Running " + this.hashCode());
-                final String s = String.valueOf((int) (Math.random() * 10));
+                Thread.sleep(1000);
+                Log.i(TAG, "Running " + this.id);
 
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Activity activity = weakActivity.get();
-                        if(activity == null) {
-                            Log.w(TAG, "No activity attached for " + ComputingTask.this.hashCode());
-                            return;
-                        }
-                        ListView listView = (ListView) activity.findViewById(R.id.listView);
-                        ((ArrayAdapter<String>) listView.getAdapter()).add(s);
+                        onResultListener.onResult(ComputingTask.this.id, progress);
                     }
                 });
+
+                if (progress >= 100) {
+                    break;
+                }
+                this.progress = this.progress + 10;
             } catch (InterruptedException e) {
+                Log.i(TAG, "Interrupting via exception " + this.id);
                 break;
             }
         }
+    }
+
+    public void setOnResultListener(OnResultListener onResultListener) {
+        this.onResultListener = onResultListener;
+    }
+
+    public void removeOnResultListener() {
+        this.onResultListener = null;
+    }
+
+    public interface OnResultListener {
+        void onResult(int id, int result);
     }
 }
