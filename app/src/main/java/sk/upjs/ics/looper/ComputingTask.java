@@ -22,7 +22,7 @@ public class ComputingTask implements Runnable {
 
     @Override
     public void run() {
-        while (!Thread.interrupted()) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
                 Thread.sleep(1000);
                 Log.i(TAG, "Running " + this.id);
@@ -40,6 +40,7 @@ public class ComputingTask implements Runnable {
                 this.progress = this.progress + 10;
             } catch (InterruptedException e) {
                 Log.i(TAG, "Interrupting via exception " + this.id);
+                Thread.currentThread().interrupt();
                 break;
             }
         }

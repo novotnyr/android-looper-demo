@@ -50,6 +50,8 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
     @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
+
+        executorService = Executors.newFixedThreadPool(3);
     }
 
     public void startTask() {
@@ -58,7 +60,6 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
         int taskId = this.adapter.getCount();
         this.adapter.add(new ProgressItem());
 
-        executorService = Executors.newFixedThreadPool(3);
         executorService.submit(new ComputingTask(taskId, handler, this));
     }
 
