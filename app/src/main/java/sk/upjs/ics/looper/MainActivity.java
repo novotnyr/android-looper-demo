@@ -1,6 +1,7 @@
 package sk.upjs.ics.looper;
 
 import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
@@ -19,7 +20,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements ComputingTask.OnResultListener {
+public class MainActivity extends AppCompatActivity implements Handler.Callback {
     public static final String TAG = MainActivity.class.getName();
 
     private ListView listView;
@@ -45,12 +46,12 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
     }
 
     public void startTask() {
-        Handler handler = new Handler(getMainLooper());
+        Handler handler = new Handler(getMainLooper(), this);
 
         int taskId = this.adapter.getCount();
         this.adapter.add(0);
 
-        executorService.submit(new ComputingTask(taskId, handler, this));
+        executorService.submit(new ComputingTask(taskId, handler));
     }
 
     @Override
@@ -72,13 +73,17 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
         super.finish();
     }
 
-    @Override
-    public void onResult(int id, int result) {
-        this.adapter.setProgress(id, result);
-    }
-
     public void onFabClick(View view) {
         startTask();
     }
 
+    @Override
+    public boolean handleMessage(Message message) {
+        int id = message.what;
+        Integer progress = (Integer) message.obj;
+
+        this.adapter.setProgress(id, progress);
+
+        return true;
+    }
 }

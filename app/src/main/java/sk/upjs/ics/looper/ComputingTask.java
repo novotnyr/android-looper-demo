@@ -1,6 +1,7 @@
 package sk.upjs.ics.looper;
 
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
 public class ComputingTask implements Runnable {
@@ -10,14 +11,11 @@ public class ComputingTask implements Runnable {
 
     private Handler handler;
 
-    private OnResultListener onResultListener;
-
     private int progress;
 
-    public ComputingTask(int id, Handler handler, OnResultListener onResultListener) {
+    public ComputingTask(int id, Handler handler) {
         this.id = id;
         this.handler = handler;
-        this.onResultListener = onResultListener;
     }
 
     @Override
@@ -27,12 +25,8 @@ public class ComputingTask implements Runnable {
                 Thread.sleep(1000);
                 Log.i(TAG, "Running " + this.id);
 
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onResultListener.onResult(ComputingTask.this.id, progress);
-                    }
-                });
+                Message message = handler.obtainMessage(ComputingTask.this.id, progress);
+                handler.sendMessage(message);
 
                 if (progress >= 100) {
                     break;
@@ -44,17 +38,5 @@ public class ComputingTask implements Runnable {
                 break;
             }
         }
-    }
-
-    public void setOnResultListener(OnResultListener onResultListener) {
-        this.onResultListener = onResultListener;
-    }
-
-    public void removeOnResultListener() {
-        this.onResultListener = null;
-    }
-
-    public interface OnResultListener {
-        void onResult(int id, int result);
     }
 }
