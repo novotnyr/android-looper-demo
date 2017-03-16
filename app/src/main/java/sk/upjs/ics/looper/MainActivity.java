@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Adapter;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -24,7 +25,7 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
     private ListView listView;
 
     private ExecutorService executorService;
-    private ArrayAdapter<ProgressItem> adapter;
+    private ProgressBarAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,18 +33,7 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
         setContentView(R.layout.activity_main);
 
         this.listView = (ListView) findViewById(R.id.listView);
-        adapter = new ArrayAdapter<ProgressItem>(this, R.layout.item_progressbar, R.id.text) {
-            @NonNull
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                ProgressBar progressBar = (ProgressBar) view.findViewById(R.id.progressBar);
-                ProgressItem progressItem = getItem(position);
-                progressBar.setProgress(progressItem.getProgress());
-
-                return view;
-            }
-        };
+        adapter = new ProgressBarAdapter(this);
         this.listView.setAdapter(adapter);
     }
 
@@ -58,7 +48,7 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
         Handler handler = new Handler(getMainLooper());
 
         int taskId = this.adapter.getCount();
-        this.adapter.add(new ProgressItem());
+        this.adapter.add(0);
 
         executorService.submit(new ComputingTask(taskId, handler, this));
     }
@@ -84,29 +74,11 @@ public class MainActivity extends AppCompatActivity implements ComputingTask.OnR
 
     @Override
     public void onResult(int id, int result) {
-        ProgressItem item = this.adapter.getItem(id);
-        item.setProgress(result);
-        this.adapter.notifyDataSetChanged();
+        this.adapter.setProgress(id, result);
     }
 
     public void onFabClick(View view) {
         startTask();
     }
 
-    public static class ProgressItem {
-        public int progress = 0;
-
-        public int getProgress() {
-            return progress;
-        }
-
-        public void setProgress(int progress) {
-            this.progress = progress;
-        }
-
-        @Override
-        public String toString() {
-            return String.valueOf(progress);
-        }
-    }
 }
