@@ -20,12 +20,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static android.R.attr.id;
+
 public class MainActivity extends AppCompatActivity implements Handler.Callback {
     public static final String TAG = MainActivity.class.getName();
 
     private ListView listView;
 
-    private ExecutorService executorService;
+    private ComputingTaskHandler computingTaskHandler;
+
     private ProgressBarAdapter adapter;
 
     @Override
@@ -42,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
 
-        executorService = Executors.newFixedThreadPool(3);
+        this.computingTaskHandler = new ComputingTaskHandler();
     }
 
     public void startTask() {
@@ -51,16 +54,18 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
         int taskId = this.adapter.getCount();
         this.adapter.add(0);
 
-        executorService.submit(new ComputingTask(taskId, handler));
+        this.computingTaskHandler.submit(taskId, handler);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        this.computingTaskHandler.resume();
     }
 
     @Override
     protected void onPause() {
+        this.computingTaskHandler.pause();
         super.onPause();
     }
 
@@ -68,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback 
     @Override
     public void finish() {
         Log.i(TAG, "Finishing activity");
-        List<Runnable> incompleteTasks = this.executorService.shutdownNow();
+        List<Runnable> incompleteTasks = this.computingTaskHandler.shutdownNow();
         Log.i(TAG, "There are " + incompleteTasks.size() + " incomplete tasks");
         super.finish();
     }
