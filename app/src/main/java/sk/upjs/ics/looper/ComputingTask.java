@@ -2,32 +2,54 @@ package sk.upjs.ics.looper;
 
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.MainThread;
+import android.support.annotation.WorkerThread;
 import android.util.Log;
 
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
 Scenarios:
 
-    *   semaphore is acquired in the run()
-    *   activity is paused
-    *   UI sets semaphore to 0
-    *   semaphore CANNOT be released in the run(), since this will erroneously trigger the next run()
-    *   therefore we toggle a boolean flag to prevent releasing the semaphore in the paused activity
+    *   Semaphore is acquired in the run()
+    *   Activity is paused
+    *   upon pause, activity either sets the semaphore to 0 or does nothing. Furthermore,
+    *   a flag is raised indicating a paused status.
+    *   in the next iteration of while(), the semaphore will be awaited until the activity is resuumed
+    *   if the activity is paused in the middle of the run iteration, the semaphore
+    *   will not be raised at the end of the iteration. (Otherwise, it can be acquired in
+    *   the next run, thus reactivating the task).
+
  */
 public class ComputingTask implements Runnable {
     public static final String TAG = ComputingTask.class.getName();
 
+    /**
+     * Task ID, arbirary number
+     */
     private int id;
 
+    /**
+     * Handler that shall be posted with the progress.
+     */
     private Handler handler;
 
-    private int progress;
-
+    /**
+     * Semaphore indicationg that the task can proceed
+     */
     private Semaphore semaphore = new Semaphore(1);
 
-    private AtomicBoolean paused = new AtomicBoolean();
+    /**
+     * Paused flag that is raised by the activity.
+     * Volatile, since it can be accessed across threads.
+     */
+    private volatile boolean paused;
+
+    /**
+     * Completed task flag that is raised by the activity.
+     * Volatile, since it can be accessed across threads.
+     */
+    private volatile boolean completed;
 
     public ComputingTask(int id, Handler handler) {
         this.id = id;
@@ -35,7 +57,9 @@ public class ComputingTask implements Runnable {
     }
 
     @Override
+    @WorkerThread
     public void run() {
+        int progress = 0;
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 this.semaphore.acquire();
@@ -48,40 +72,37 @@ public class ComputingTask implements Runnable {
                 if (progress >= 100) {
                     break;
                 }
-                this.progress = this.progress + 10;
+                progress += 10;
             } catch (InterruptedException e) {
                 Log.i(TAG, "Interrupting via exception " + this.id);
                 Thread.currentThread().interrupt();
                 break;
             } finally {
-                if(!paused.get()) {
+                if(!paused) {
                     this.semaphore.release();
                 }
             }
         }
+        this.completed = true;
     }
 
-    /**
-     * Runs on UI thread
-     */
+    @MainThread
     public void pause() {
-        Log.i(TAG, "Acquiring on pause()");
+        this.paused = true;
+        this.semaphore.tryAcquire();
 
-        this.paused.set(true);
-        this.semaphore.drainPermits();
-
-        Log.i(TAG, "Acquired on pause()");
+        Log.i(TAG, "Computing task " + this.id + " is paused");
     }
 
-    /**
-     * Runs on UI thread
-     */
+    @MainThread
     public void resume() {
-        Log.i(TAG, "Releasing on resume()");
-
         this.semaphore.release();
-        this.paused.set(false);
+        this.paused = false;
 
-        Log.i(TAG, "Released on resume()");
+        Log.i(TAG, "Computing task " + this.id + " is resumed");
+    }
+
+    public boolean isCompleted() {
+        return completed;
     }
 }
